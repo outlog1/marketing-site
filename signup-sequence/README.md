@@ -4,11 +4,22 @@ Google Apps Script that runs against the Tally signups sheet and sends a 3-email
 
 ## Sequence
 
-| # | When           | Subject                              | Goal                                      |
-|---|----------------|--------------------------------------|-------------------------------------------|
-| 1 | Immediate      | Welcome to Outlog — quick question   | Personal intro, ask 2 questions → reply   |
-| 2 | T + 3 days     | Still saving you a spot              | Signal traction + founding-guide perks    |
-| 3 | T + 10 days    | Last check-in from Outlog            | Soft final nudge, low pressure            |
+Three emails sent at T+0 (instant), T+3 days, T+10 days. Copy branches by role.
+
+The Tally form's "Who are you?" field is multi-select (`Guide`, `Guide service`, `Shop & service`, `Other`). One **primary role** drives the copy, picked by priority:
+
+`shop_service` > `guide_service` > `guide` > `other`
+
+Bigger-scope wins so a shop owner who also guides gets the shop sequence, a service owner who also guides gets the service sequence, etc.
+
+Each role has its own three emails, all asking targeted questions:
+
+| Role           | Email 1 asks about…                                                              |
+|----------------|----------------------------------------------------------------------------------|
+| guide          | Affiliation with an outfitter vs booking own trips; what eats time off the water |
+| guide_service  | Booking mix (new vs return); biggest leak; central resource management           |
+| shop_service   | Same as guide_service, plus how e-commerce ties into trip flow                   |
+| other          | How they're connected to the industry; what they'd want Outlog to solve         |
 
 Any reply from the signup's address (Gmail search `from:<email> after:<submitted_at>`) flips status to `replied` and stops further sends.
 
@@ -41,7 +52,7 @@ Apps Script web apps pin to a version. After editing `Code.gs`:
 
 ## Editing the copy
 
-All three emails live in `sendEmail1_`, `sendEmail2_`, `sendEmail3_` at the top of `Code.gs`. Edit, save, no redeploy needed — next trigger run picks up the new copy.
+All twelve emails live in the `COPY` table in `Code.gs` (keyed `guide` / `guide_service` / `shop_service` / `other`, each with `e1` / `e2` / `e3`). Edit, save, no trigger redeploy needed — but the **webhook web app pins to a deployed version**, so for changes to apply to new submissions immediately, redeploy via *Deploy → Manage deployments → pencil → New version*.
 
 ## Manual sanity check before turning it on
 

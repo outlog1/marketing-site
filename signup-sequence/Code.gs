@@ -69,7 +69,7 @@ function doPost(e) {
       'active', new Date(), '', '',
     ]);
 
-    sendEmail1_(row);
+    sendSequenceEmail_(row, 1);
     return ContentService.createTextOutput('ok');
   } catch (err) {
     console.error(err);
@@ -85,7 +85,7 @@ function processNewSignups() {
   rows.forEach(r => {
     if (r.status) return;                  // already processed
     if (!r.email) return;
-    sendEmail1_(r);
+    sendSequenceEmail_(r, 1);
     markSent_(r.rowIndex, 'email1', 'active');
   });
 }
@@ -101,22 +101,27 @@ function processFollowups() {
       return;
     }
     if (!r.email2Sent && daysSince_(r.submittedAt, now) >= FOLLOWUP_2_DAYS) {
-      sendEmail2_(r);
+      sendSequenceEmail_(r, 2);
       markSent_(r.rowIndex, 'email2', 'active');
       return;
     }
     if (r.email2Sent && !r.email3Sent && daysSince_(r.submittedAt, now) >= FOLLOWUP_3_DAYS) {
-      sendEmail3_(r);
+      sendSequenceEmail_(r, 3);
       markSent_(r.rowIndex, 'email3', 'done');
     }
   });
 }
 
-// ─── Email copy ──────────────────────────────────────────────────────────────
+// ─── Email copy (role-aware) ─────────────────────────────────────────────────
 
-function sendEmail1_(r) {
-  const subject = 'Welcome to Outlog — quick question';
-  const body =
+const SIG = `— John
+john@getoutlog.com`;
+
+const COPY = {
+  guide: {
+    e1: {
+      subject: 'Welcome to Outlog — quick question',
+      body:
 `Hey,
 
 John here — founder of Outlog. Thanks for putting your name in for early access.
@@ -125,50 +130,216 @@ We're picking 10 founding guides this season to help shape the product before we
 
 Two quick questions to make sure we're a fit:
 
-  1. What outfit are you guiding for (or running)?
-  2. What's the single biggest pain in your day right now — booking, scheduling, payments, follow-up, something else?
+  1. Do you affiliate with an outfitter, book your own trips, or both?
+  2. What eats your time off the water — paperwork, getting paid, comms with the shop, something else?
 
 Just hit reply. Two sentences is plenty.
 
-— John
-john@getoutlog.com`;
-  send_(r.email, subject, body);
-}
-
-function sendEmail2_(r) {
-  const subject = 'Still saving you a spot';
-  const body =
+${SIG}`,
+    },
+    e2: {
+      subject: "A few things we're building for guides",
+      body:
 `Hey,
 
-Following up on my note from a few days back. Wanted to give you a feel for where we are:
+Following up on my note from a few days back. Here's where things stand on the guide side specifically:
 
-  • Founding guides are already in from Colorado, Montana, and Wyoming
-  • First build focus: booking + payments in one flow, no double-entry
-  • Founding guides get lifetime pricing and a direct line to me on what gets built next
+  • Faster pay — trips, tips, and shop splits settled without chasing anyone
+  • Less paperwork between trips, so your turnaround time is actually a turnaround
+  • Cleaner shop comms — your assignments, gear, and client info in one place instead of three texts and an email
 
-If Outlog sounds like something you'd want to shape, hit reply with the outfit you're guiding for and I'll get you set up.
+Founding guides get lifetime pricing and a direct line to me on what gets built next.
 
-— John
-john@getoutlog.com`;
-  send_(r.email, subject, body);
-}
+If that sounds like something you'd want to shape, hit reply and tell me what your day usually looks like.
 
-function sendEmail3_(r) {
-  const subject = 'Last check-in from Outlog';
-  const body =
+${SIG}`,
+    },
+    e3: {
+      subject: 'Last check-in from Outlog',
+      body:
 `Hey,
 
 Last note from me — I don't want to clutter your inbox.
 
-We're closing the founding-guide cohort soon. If now's not the right time, no worries at all; I'll keep you on the list for general access when we open it up.
+We're closing the founding-guide cohort soon. If now's not the right time, no worries; I'll keep you on the list for general access when we open it up.
 
 If you do want one of the founding spots, just reply with a yes and I'll take it from there.
 
 Either way, tight lines this season.
 
-— John
-john@getoutlog.com`;
-  send_(r.email, subject, body);
+${SIG}`,
+    },
+  },
+
+  guide_service: {
+    e1: {
+      subject: 'Welcome to Outlog — a few questions about your ops',
+      body:
+`Hey,
+
+John here — founder of Outlog. Thanks for putting your name in for early access.
+
+We're picking 10 founding outfits this season to help shape the product before we open it up. Goal is the outfitter app the industry's been missing — built with the people running the business.
+
+A few questions so I can write back with something actually useful:
+
+  1. Booking mix — mostly new clients, mostly returning, or roughly even?
+  2. Where's the biggest leak right now — booking, scheduling, or guide coordination?
+  3. Do you manage shared resources (boats, vehicles, gear) centrally, or do guides handle their own?
+
+Hit reply with whatever's top of mind. Two sentences is plenty.
+
+${SIG}`,
+    },
+    e2: {
+      subject: "What we're building for guide services",
+      body:
+`Hey,
+
+Following up on my note from a few days back. Here's where Outlog is focused for outfits like yours:
+
+  • Booking + payment in one flow — no double-entry, no spreadsheets in the middle
+  • Guide assignments tied to trips, so the schedule and the roster stop drifting apart
+  • Central calendar for boats, vehicles, and shared gear if that's where your day usually breaks
+
+Founding outfits get lifetime pricing and a direct line to me on what gets built next.
+
+If this lines up with where your pain is, hit reply and tell me where the worst of it sits.
+
+${SIG}`,
+    },
+    e3: {
+      subject: 'Last check-in from Outlog',
+      body:
+`Hey,
+
+Last note from me — I don't want to clutter your inbox.
+
+We're closing the founding cohort soon. If now's not the right time, no worries; I'll keep you on the list for general access when we open it up.
+
+If you do want one of the founding spots, just reply with a yes and I'll take it from there.
+
+Either way, tight lines this season.
+
+${SIG}`,
+    },
+  },
+
+  shop_service: {
+    e1: {
+      subject: 'Welcome to Outlog — a few questions about your shop + service',
+      body:
+`Hey,
+
+John here — founder of Outlog. Thanks for putting your name in for early access.
+
+We're picking 10 founding outfits this season to help shape the product before we open it up. Shops running a guide service have the messiest day of anyone I talk to — retail floor and the river on the same clock — so I want to make sure we build for that, not around it.
+
+A few questions so I can write back with something actually useful:
+
+  1. Booking mix — mostly new clients, mostly returning, or roughly even?
+  2. Where's the biggest leak — booking, scheduling, or guide coordination?
+  3. Do you manage shared resources (boats, vehicles, gear) centrally, or do guides handle their own?
+  4. How does the e-commerce side fit in — are online gear sales connected to the trip flow at all, or living in a separate world?
+
+Hit reply with whatever's loudest. Two sentences is plenty.
+
+${SIG}`,
+    },
+    e2: {
+      subject: "What we're building for shop + service operators",
+      body:
+`Hey,
+
+Following up on my note from a few days back. Here's where Outlog is focused for shops running a guide service:
+
+  • One calendar across guides and the shop floor — no more "who's where today" in three places
+  • Trip flow and online gear sales tied together, so the e-comm side stops being its own island
+  • One inventory view across retail and outfitting — what's on the rack, what's on the boat, what's already sold
+
+Founding outfits get lifetime pricing and a direct line to me on what gets built next.
+
+If this maps to where you actually hurt, hit reply and tell me where the worst of it sits.
+
+${SIG}`,
+    },
+    e3: {
+      subject: 'Last check-in from Outlog',
+      body:
+`Hey,
+
+Last note from me — I don't want to clutter your inbox.
+
+We're closing the founding cohort soon. If now's not the right time, no worries; I'll keep you on the list for general access when we open it up.
+
+If you do want one of the founding spots, just reply with a yes and I'll take it from there.
+
+Either way, tight lines this season.
+
+${SIG}`,
+    },
+  },
+
+  other: {
+    e1: {
+      subject: 'Welcome to Outlog — quick question',
+      body:
+`Hey,
+
+John here — founder of Outlog. Thanks for putting your name in for early access.
+
+We're picking 10 founding members this season to help shape the product before we open it up. The goal is the outfitter app the industry's been missing, built with the people who'll actually use it.
+
+Two quick questions:
+
+  1. How are you connected to the industry?
+  2. What would you want Outlog to solve for you?
+
+Hit reply. Two sentences is plenty.
+
+${SIG}`,
+    },
+    e2: {
+      subject: 'Still saving you a spot',
+      body:
+`Hey,
+
+Following up on my note from a few days back. Founding members are already in from Colorado, Montana, and Wyoming — guides, services, and a couple of shops.
+
+There's still room in the cohort. If there's something specific you'd want Outlog to solve for you, hit reply and tell me what it is — that's the build list right now.
+
+${SIG}`,
+    },
+    e3: {
+      subject: 'Last check-in from Outlog',
+      body:
+`Hey,
+
+Last note from me — I don't want to clutter your inbox.
+
+We're closing the founding cohort soon. If now's not the right time, no worries; I'll keep you on the list for general access when we open it up.
+
+If you do want one of the founding spots, just reply with a yes and I'll take it from there.
+
+Either way, tight lines this season.
+
+${SIG}`,
+    },
+  },
+};
+
+function primaryRole_(whoAreYou) {
+  const s = String(whoAreYou || '').toLowerCase();
+  if (s.includes('shop'))          return 'shop_service';
+  if (s.includes('guide service')) return 'guide_service';
+  if (s.includes('guide'))         return 'guide';
+  return 'other';
+}
+
+function sendSequenceEmail_(r, n) {
+  const role = primaryRole_(r.whoAreYou);
+  const copy = (COPY[role] && COPY[role]['e' + n]) || COPY.other['e' + n];
+  send_(r.email, copy.subject, copy.body);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
