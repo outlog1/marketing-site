@@ -117,7 +117,7 @@ function processFollowups() {
 function sendEmail1_(r) {
   const subject = 'Welcome to Outlog — quick question';
   const body =
-`Hey${firstName_(r.whoAreYou) ? ' ' + firstName_(r.whoAreYou) : ''},
+`Hey,
 
 John here — founder of Outlog. Thanks for putting your name in for early access.
 
@@ -138,7 +138,7 @@ john@getoutlog.com`;
 function sendEmail2_(r) {
   const subject = 'Still saving you a spot';
   const body =
-`Hey${firstName_(r.whoAreYou) ? ' ' + firstName_(r.whoAreYou) : ''},
+`Hey,
 
 Following up on my note from a few days back. Wanted to give you a feel for where we are:
 
@@ -156,7 +156,7 @@ john@getoutlog.com`;
 function sendEmail3_(r) {
   const subject = 'Last check-in from Outlog';
   const body =
-`Hey${firstName_(r.whoAreYou) ? ' ' + firstName_(r.whoAreYou) : ''},
+`Hey,
 
 Last note from me — I don't want to clutter your inbox.
 
@@ -233,14 +233,6 @@ function hasReplied_(email, since) {
 
 function daysSince_(date, now) {
   return (now - date) / (1000 * 60 * 60 * 24);
-}
-
-function firstName_(whoAreYou) {
-  if (!whoAreYou) return '';
-  const s = String(whoAreYou).trim();
-  // "I'm a guide" / "Guide" / "Outfitter" → no name to extract
-  if (/^(i'?m |a |an |the )?(guide|outfitter|owner)/i.test(s)) return '';
-  return s.split(/\s+/)[0];
 }
 
 // ─── One-time setup ──────────────────────────────────────────────────────────
