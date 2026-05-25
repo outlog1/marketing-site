@@ -17,9 +17,69 @@ const SENDER_EMAIL     = 'john@getoutlog.com';
 const FOLLOWUP_2_DAYS  = 3;
 const FOLLOWUP_3_DAYS  = 10;
 
+// ─── Webhook entry point (instant on Tally submit) ───────────────────────────
+
+/**
+ * Tally posts here the instant a form is submitted. Writes the row + sends
+ * email 1 with no wait. Deploy this script as a Web App (Deploy → New
+ * deployment → Web app, execute as Me, anyone with link can access) and paste
+ * the URL into the Tally form's webhook integration.
+ */
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+    const fields  = (payload.data && payload.data.fields) || [];
+    const get = (label) => {
+      const f = fields.find(x => x.label === label);
+      if (!f) return '';
+      // Dropdown values come as array of option IDs — resolve via options[].
+      if (Array.isArray(f.value)) {
+        return f.value
+          .map(id => (f.options || []).find(o => o.id === id))
+          .filter(Boolean)
+          .map(o => o.text)
+          .join(', ');
+      }
+      return f.value || '';
+    };
+
+    const row = {
+      submissionId: payload.data && payload.data.submissionId,
+      respondentId: payload.data && payload.data.respondentId,
+      submittedAt:  new Date(payload.createdAt || Date.now()),
+      whoAreYou:    get('Who are you?'),
+      email:        String(get('Email')).trim(),
+    };
+    if (!row.email) return ContentService.createTextOutput('skip: no email');
+
+    const sh = SpreadsheetApp.getActive().getSheetByName(SHEET_NAME);
+    ensureStatusColumns_(sh);
+
+    // Dedupe: if this submissionId is already a row, do nothing.
+    const existing = sh.getDataRange().getValues();
+    for (let i = 1; i < existing.length; i++) {
+      if (existing[i][0] === row.submissionId) {
+        return ContentService.createTextOutput('skip: dup');
+      }
+    }
+
+    sh.appendRow([
+      row.submissionId, row.respondentId, row.submittedAt,
+      row.whoAreYou, row.email,
+      'active', new Date(), '', '',
+    ]);
+
+    sendEmail1_(row);
+    return ContentService.createTextOutput('ok');
+  } catch (err) {
+    console.error(err);
+    return ContentService.createTextOutput('error: ' + err.message);
+  }
+}
+
 // ─── Trigger entry points ────────────────────────────────────────────────────
 
-/** Run every 10 min. Sends email 1 to any new row. */
+/** Safety net. Runs every 10 min in case the webhook ever fails. */
 function processNewSignups() {
   const rows = getRows_();
   rows.forEach(r => {
